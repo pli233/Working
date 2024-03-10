@@ -1,0 +1,10 @@
+name: homework2_shiny_app
+title:
+username: pli233
+account: pli233
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11450607
+bundleId: 8354891
+url: https://pli233.shinyapps.io/homework2_shiny_app/
+version: 1
