@@ -1,0 +1,10 @@
+name: Taylor_Swift_Spotify_Data
+title:
+username: qqiao
+account: qqiao
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11460625
+bundleId: 8359865
+url: https://qqiao.shinyapps.io/Taylor_Swift_Spotify_Data/
+version: 1
