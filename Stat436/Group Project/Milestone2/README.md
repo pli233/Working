@@ -18,7 +18,7 @@ Explore our visualizations and findings at our Shiny web application: [Shiny App
 
 ## Source Code
 
-Our work, including data processing and visualization codes, is available at: [GitHub Repository](https://github.com/pli233/Working/tree/main/Stat436/Group%20Project/Milestone2)
+Our work Project [Milestone2_Shiny.R](https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/Milestone2/Project%20Milestone2_Shiny.R), including data processing and visualization codes, is available at: [GitHub Repository](https://github.com/pli233/Working/tree/main/Stat436/Group%20Project/Milestone2)
 
 ## Design Prototypes
 
