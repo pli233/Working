@@ -162,10 +162,8 @@ const Status BufMgr::allocBuf(int &frame) {
 }
 
 
-/*
- *  Each time a page in the buffer pool is accessed (via a readPage() call to the buffer manager)
- *  the refbit of the corresponding frame is set to true.
- * */
+// Method to read a specific page from a file. It checks if the page is already in the buffer pool.
+// If the page is in the buffer pool, it updates the frame's metadata. If not, it loads the page into the buffer pool from disk.
 const Status BufMgr::readPage(File *file, const int PageNo, Page *&page) {
     int frameNo;
 
