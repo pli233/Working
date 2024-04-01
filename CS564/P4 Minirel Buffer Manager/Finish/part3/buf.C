@@ -8,8 +8,6 @@
 #include "page.h"
 #include "buf.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
 #define ASSERT(c)  { if (!(c)) { \
                cerr << "At line " << __LINE__ << ":" << endl << "  "; \
                        cerr << "This condition should hold: " #c << endl; \
@@ -162,40 +160,60 @@ const Status BufMgr::allocBuf(int &frame) {
 }
 
 
-// Method to read a specific page from a file. It checks if the page is already in the buffer pool.
-// If the page is in the buffer pool, it updates the frame's metadata. If not, it loads the page into the buffer pool from disk.
+/**
+ * Attempts to read a specified page from a file into the buffer pool. If the page is already present in the buffer pool,
+ * it updates the metadata of the frame containing the page. If the page is not in the buffer pool, it loads the page from
+ * disk into a free frame in the buffer pool.
+ *
+ * The function first checks the hash table to determine if the page is already loaded. If the page is found, it increments
+ * the pin count and sets the reference bit to true, indicating that the page is being accessed. If the page is not found,
+ * it allocates a new buffer frame, reads the page from disk into this frame, inserts the page into the hash table, and
+ * sets up the frame's metadata.
+ *
+ * \param[in] file A pointer to the File object representing the file containing the page.
+ * \param[in] PageNo The page number within the file to be read.
+ * \param[out] page A pointer to a Page pointer (double pointer), which will point to the page frame containing the requested page upon success.
+ * \return OK if the page was successfully read into the buffer pool or was already present.
+ * \return BUFFEREXCEEDED if there are no free frames available in the buffer pool.
+ * \return UNIXERR if there was an error reading the page from disk.
+ * \return HASHTBLERROR if inserting the page into the hash table failed.
+ */
+
 const Status BufMgr::readPage(File *file, const int PageNo, Page *&page) {
     int frameNo;
 
-    // First, check if the page is already in the buffer pool
+    // 1. Use hashtable to check if the page is already in the buffer pool
     Status status = hashTable->lookup(file, PageNo, frameNo);
 
+    // 2. Page is in the hashTable and buffer pool, we can read buf pool to load it
     if (status == OK) {
-        // Case 2: Page is in the buffer pool
         BufDesc *bufDesc = &bufTable[frameNo];
         bufDesc->refbit = true; // Set the appropriate refbit
         bufDesc->pinCnt++; // Increment the pinCnt for the page
         page = &bufPool[frameNo]; // Return a pointer to the frame containing the page
     } else {
-        // Case 1: Page is not in the buffer pool
-        status = allocBuf(frameNo); // Allocate a buffer frame
+        // 3. Page is not in the buffer pool
+
+        // 3.1 Try to Allocate a buffer frame
+        status = allocBuf(frameNo);
         if (status != OK) {
             return status; // Could be BUFFEREXCEEDED or UNIXERR
         }
 
-        // Read the page from disk into the buffer pool frame
+        // Successfully allocate a page
+        // 3.2 Read the page from disk into the buffer pool frame
         status = file->readPage(PageNo, &bufPool[frameNo]);
         if (status != OK) {
             return UNIXERR; // Assuming any error here is a Unix error
         }
 
-        // Insert the page into the hash table
+        // 3.3 Insert the page into the hash table
         status = hashTable->insert(file, PageNo, frameNo);
         if (status != OK) {
             return HASHTBLERROR; // If inserting into the hash table fails
         }
 
-        // Set up the frame properly
+        // 3.4 Set up the frame properly
         bufTable[frameNo].Set(file, PageNo); // This will leave the pinCnt for the page set to 1
         page = &bufPool[frameNo]; // Return a pointer to the frame containing the page
     }
@@ -204,59 +222,92 @@ const Status BufMgr::readPage(File *file, const int PageNo, Page *&page) {
 }
 
 
+
+/**
+ * Decrements the pin count of a specified page in the buffer pool and optionally marks it as dirty. The function looks up
+ * the page in the hash table to find its corresponding frame. If found, it checks the pin count to ensure it is not already
+ * zero (indicating an error if it is) and then decrements the pin count. If the 'dirty' parameter is true, the function also
+ * sets the dirty bit for the page, indicating that it has been modified and needs to be written back to disk upon eviction.
+ *
+ * \param[in] file A pointer to the File object representing the file containing the page.
+ * \param[in] PageNo The page number within the file to be unpinned.
+ * \param[in] dirty A boolean flag indicating whether the page has been modified.
+ * \return OK if the operation is successful.
+ * \return HASHNOTFOUND if the page is not found in the hash table, indicating it is not in the buffer pool.
+ * \return PAGENOTPINNED if the page's pin count is already zero, indicating an error in the calling code.
+ */
+
+
 const Status BufMgr::unPinPage(File *file, const int PageNo,
                                const bool dirty) {
     int frameNo;
-    // Step 1: Look up the frame in the hash table
+    // 1. Look up the frame in the hash table
     Status status = hashTable->lookup(file, PageNo, frameNo);
     if (status != OK) {
-        return HASHNOTFOUND; // The page is not found in the buffer pool
+        return HASHNOTFOUND; // The page is not found in the buffer pool, return correspond error code
     }
 
-    // Reference the BufDesc for the found frame
+    // 2. Reference the BufDesc for the found frame
     BufDesc *bufDesc = &bufTable[frameNo];
 
-    // Step 2: Check the pin count
+    // 3. Check the pin count
     if (bufDesc->pinCnt <= 0) {
         // Pin count should not be less than 0; indicate an error if it is
         return PAGENOTPINNED; // The page is not pinned
     }
 
-    // Step 3: Decrement the pin count and set dirty bit if necessary
+    // 4. Decrement the pin count and set dirty bit if necessary
     bufDesc->pinCnt--;
     if (dirty) {
         bufDesc->dirty = true; // Mark the page as dirty
     }
 
-    // Step 4: Return OK on successful operation
+    // 5. Return OK on successful operation
     return OK;
 }
+
+
+/**
+ * Allocates a new page in a file and a frame in the buffer pool for the page. The function first allocates an empty page
+ * in the specified file. It then allocates a buffer frame for this page using the clock  algorithm.
+ * After obtaining a frame, it inserts an entry for the new page into the hash table and sets up the frame's
+ * metadata. If any step fails (allocating a page in the file, allocating a buffer frame, or inserting into the hash table),
+ * it performs necessary cleanup, such as deallocating the page from the file and clearing the frame's metadata.
+ *
+ * \param[in] file A pointer to the File object where the new page will be created.
+ * \param[out] pageNo An integer reference where the number of the newly allocated page will be stored.
+ * \param[out] page A pointer to a Page pointer, which will point to the buffer frame containing the newly allocated page upon success.
+ * \return OK if the page and frame were successfully allocated and set up.
+ * \return BUFFEREXCEEDED if no buffer frame could be allocated because all frames are pinned.
+ * \return UNIXERR if there's a file-level error during page allocation.
+ * \return HASHTBLERROR if inserting the new page into the hash table fails.
+ */
 
 const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page) {
     Status status;
     int frameNo;
 
-    // Step 1: Allocate an empty page in the file
+    // 1. Allocate an empty page in the file
     status = file->allocatePage(pageNo);
     if (status != OK) {
-        return status; // Could potentially be UNIXERR if there's a file-level error
+        return status; // RETURN by allocatePage() in db.C
     }
 
-    // Step 2: Obtain a buffer pool frame
+    // 2. Obtain a buffer pool frame
     status = allocBuf(frameNo);
     if (status != OK) {
         // If no frame could be allocated, it's necessary to deallocate the page in the file
         file->disposePage(pageNo);
-        return status; // Could be BUFFEREXCEEDED if all frames are pinned
+        return status; // // Could be BUFFEREXCEEDED or UNIXERR
     }
 
-    // Step 4: Setup the buffer frame properly
+    // 3. Setup the buffer frame properly
     bufTable[frameNo].Set(file, pageNo);
 
-    // Get a pointer to the allocated frame in the buffer pool
+    // 4. Get a pointer to the allocated frame in the buffer pool
     page = &bufPool[frameNo];
 
-    // Step 3: Insert an entry into the hash table
+    // 5. Insert an entry into the hash table for quick look up
     status = hashTable->insert(file, pageNo, frameNo);
     if (status != OK) {
         // Cleanup if the hash table insertion fails
@@ -265,7 +316,8 @@ const Status BufMgr::allocPage(File *file, int &pageNo, Page *&page) {
         return HASHTBLERROR;
     }
 
-    return OK; // Successful allocation and setup, returns the page number and frame pointer to the caller
+    // 6. Successful allocation and setup, returns the page number and frame pointer to the caller
+    return OK;
 }
 
 const Status BufMgr::disposePage(File *file, const int pageNo) {
