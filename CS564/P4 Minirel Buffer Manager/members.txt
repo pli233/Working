@@ -1,3 +1,5 @@
-NIANZE GUO
-PEICHUAN YANG
-PEIYUAN LI
+Group 35:
+All the works are distributed quite evenly within the team.
+Peiyuan Li: Authored the allocBuf function, defined the workflow for each function, and debugged all functions.
+Nianze Guo: Developed the unPinPage and allocPage functions, contributed comments, and debugged all functions.
+Peichuan Yang: Created the readPage function, managed group communication, and debugged all functions.
