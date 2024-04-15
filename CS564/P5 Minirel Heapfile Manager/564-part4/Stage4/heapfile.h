@@ -22,6 +22,20 @@ const unsigned MAXNAMESIZE = 50;
 enum Datatype { STRING, INTEGER, FLOAT };    // attribute data types
 enum Operator { LT, LTE, EQ, GTE, GT, NE };  // scan operators
 
+
+/* The below struct defines a heap file header page
+ *
+ * FileHdrPage class implements a heap file using a linked list of pages
+ * lastPage is used to keep track of the last page in the file.
+ * The firstPage attribute of the header page points to the first data page.
+ * The data pages are instances of the Page class and they are linked together
+ * using a linked list (via the nextPage data member).
+ *
+ * The FileHdrPage class has NO member functions. The reason for this will be explained below.
+ * Associated with this class are two functions that you are to implement: createHeapFile() and destroyHeapFile().
+ */
+
+
 struct FileHdrPage
 {
   char		fileName[MAXNAMESIZE];   // name of file
@@ -31,8 +45,15 @@ struct FileHdrPage
   int		recCnt;		// record count
 };
 
-
-// class definition of heapFile
+/* class definition of heapFile
+ *
+ * A heap file consists of one file header page and 1 or more data pages.
+ * The HeapFile class provides a set of methods to manipulate heap files
+ * including adding and deleting records and scanning all records in a file.
+ *
+ * Creating an instance of the heapFile class opens the heap file and reads the
+ * file header page and the first data page into the buffer pool.
+ */
 class HeapFile {
 protected:
    File* 	filePtr;        // underlying DB File object

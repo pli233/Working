@@ -61,11 +61,12 @@ int main(int argc, char **argv)
     memset(rec1.s, ' ', sizeof(rec1.s));
 
     cout << endl;
-    cout << "insert " << num << " records into dummy.02" << endl;
+    cout << "insert " << num << " records into dummy.02" << endl; //insert 10120 records into dummy.02
     cout << endl;
 
     cout << "Start an insert scan which will have the side effect of opening dummy.02 " << endl;
     iScan = new InsertFileScan("dummy.02", status);
+    cout << "Start inserting records into dummy.02 " << endl;
     for(i = 0; i < num; i++) {
         sprintf(rec1.s, "This is record %05d", i);
         rec1.i = i;
