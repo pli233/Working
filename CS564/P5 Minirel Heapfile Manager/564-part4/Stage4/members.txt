@@ -1,0 +1,4 @@
+All the works are distributed quite evenly within the team, and we helped each other out when working on the project.
+PEIYUAN LI: Implemented the createHeapFile and the HeapFile() function, and debug for all other functions.
+NIANZE GUO: Wrote the scanNext() and getRecord() function, and debug for all other functions.
+PEICHUAN YANG: Wrote the insertRecord() function, and debug for all other functions.
