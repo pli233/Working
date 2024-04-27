@@ -113,29 +113,28 @@ tidied_pca %>%
 
 
 ```{r}
-# Split the data into training and testing sets
-set.seed(123)  # for reproducibility
+# Split the dataset into training and testing sets for model evaluation
+set.seed(123)  # Set a seed for reproducibility
 split_data <- initial_split(diamonds_df, prop = 0.8, strata = "price")
 train_data <- training(split_data)
 test_data <- testing(split_data)
 
-# Create a linear regression model using carat, table, depth, and color as predictors
+# Build a linear regression model using the identified predictors
 lm_model <- lm(price ~ carat + table + depth + color + clarity, data = train_data)
 
-# Make predictions on the test data
+# Predict prices on the test set
 test_predictions <- predict(lm_model, newdata = test_data)
 
-# Add predictions to the test data
+# Combine predictions with the actual test data
 test_data <- test_data %>%
   mutate(predicted_price = test_predictions)
 
-# Plot the predicted prices against the actual prices
+# Visualize the predicted vs. actual prices with a centered title
 ggplot(test_data, aes(x = price, y = predicted_price)) +
   geom_point(alpha = 0.5) +
   geom_abline(color = "red", linetype = "dashed") +
   labs(x = "Actual Price", y = "Predicted Price", title = "Predicted vs Actual Prices") +
-  theme_minimal()
-
-
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))  # Center the plot title
 ```
-可以看到，拟合的结果相当的不错。这毫无疑问说明了PCA效果很好，即使只是提取其中top5 pC中最重要的载荷也依然效果突出能够代表数据集中的特征。
+<p>The linear regression results align well with the actual prices, affirming the effectiveness of PCA and the selected predictors in capturing the dataset's features.</p>
