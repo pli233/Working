@@ -15,74 +15,26 @@ output:
     toc: true
 ---
 ```{r setup}
-#Hide unnecessary output and warning message such as library(tidyverse)
+# Set global chunk options to suppress warnings and messages for a cleaner output
 knitr::opts_chunk$set(warnings = FALSE, message = FALSE)
+
+# Load necessary libraries for data manipulation, visualization, and modeling
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
 library(tidymodels)
 library(broom)
-diamonds_df <- read_csv("./diamonds.csv")
+library(tidytext)
+
+# Read the diamonds dataset from github raw
+diamonds_df <- read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Homework4%20MODEL%20VISUALIZATION/diamonds.csv")
+
+
 ```
+<p>Since PCA requires numerical data, all categorical labels in the dataset are converted to corresponding numerical levels in the preprocessing step.</p>
 
 ```{r}
-
-# 加载所需的库
-library(dplyr)
-library(tidymodels)
-library(ggplot2)
-
-# 对'cut', 'clarity', 和 'color'列进行数值编码
-diamonds_df <- diamonds_df %>%
-  mutate(
-    cut = recode(cut, "Ideal" = 5, "Premium" = 4, "Very Good" = 3, "Good" = 2, "Fair" = 1),
-    clarity = recode(clarity, "I1" = 1, "SI2" = 2, "SI1" = 3, "VS2" = 4, "VS1" = 5, "VVS2" = 6, "VVS1" = 7, "IF" = 8),
-    color = recode(color, "J" = 1, "I" = 2, "H" = 3, "G" = 4, "F" = 5, "E" = 6, "D" = 7)
-  )
-
-# 创建PCA配方并排除'price'变量
-pca_recipe <- recipe(~ . - price, data = diamonds_df) %>%
-  step_normalize(all_predictors(), -all_outcomes()) %>%
-  step_pca(all_predictors(), -all_outcomes(), threshold = 0.95)
-
-# 准备并应用PCA配方
-pca_prep <- prep(pca_recipe)
-pca_summary <- tidy(pca_prep, number = 1)  # 获取主成分摘要
-
-# 将PCA应用于数据集
-diamonds_transformed <- bake(pca_prep, new_data = NULL)
-
-# 将主成分和原始价格数据结合起来
-diamonds_transformed <- bind_cols(diamonds_transformed, diamonds_df %>% select(price))
-
-# 使用主成分作为预测变量建立线性模型
-lm_model <- lm(price ~ ., data = diamonds_transformed)
-lm_summary <- summary(lm_model)
-
-# 输出模型摘要来查看哪些主成分对价格影响最大
-print(lm_summary)
-
-# 使用tidy()从lm模型中提取系数并进行排序，以确定影响最大的变量
-tidy_lm <- tidy(lm_model)
-top_influencers <- tidy_lm %>%
-  arrange(desc(abs(estimate)))  # 根据估计系数的绝对值排序
-
-# 输出影响最大的几个系数
-print(top_influencers)
-
-# 如果您想要直观展示影响最大的变量，可以绘制一个系数图
-ggplot(top_influencers, aes(x = reorder(term, estimate), y = estimate, fill = estimate > 0)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  labs(x = "Variables", y = "Coefficients", title = "Top Influencers on Diamond Price")
-
-
-
-```
-
-```{r data_preprocess}
-
-# Recoding cut, clarity, and color columns into number
+# Convert the categorical attributes 'cut', 'clarity', and 'color' into numerical levels
 diamonds_df <- diamonds_df %>%
   mutate(
     cut = recode(cut,
@@ -110,41 +62,32 @@ diamonds_df <- diamonds_df %>%
                    "D" = 7)
   )
 
-# Viewing the first few rows to confirm the changes
+# Check the first few rows to confirm the changes
 head(diamonds_df)
 ```
 
 
+
 ```{r}
+# Select all variables except 'price' for PCA
 temp <- diamonds_df %>%  select(-price)
 
-# Step 1: Specify the recipe
+# Define the recipe for PCA with normalization and threshold for variance explained
 pca_recipe <- recipe(~ ., data = temp) %>%
   step_normalize(all_numeric(), -all_outcomes()) %>%
   step_pca(all_numeric(), -all_outcomes(), threshold = 0.95)
 
-# Step 2: Prepare and train the recipe
+# Prepare and bake the recipe
 pca_prep <- prep(pca_recipe)
 
-# Step 3: Extract variances for PCA components
+# Tidy the PCA results to extract component variances and loadings
 tidied_pca <- tidy(pca_prep, 2)
 
+# Plot the contributions of elements in the top 5 PCA components
 tidied_pca %>%
   filter(component %in% paste0("PC", 1:5)) %>%
-  mutate(component = fct_inorder(component)) %>%
-  ggplot(aes(value, terms, fill = terms)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~component, nrow = 1) +
-  labs(y = NULL)
-```
-
-```{r}
-library(tidytext)
-
-tidied_pca %>%
-  filter(component %in% paste0("PC", 1:4)) %>%
   group_by(component) %>%
-  top_n(8, abs(value)) %>%
+  slice_max(order_by = abs(value), n = 8) %>%
   ungroup() %>%
   mutate(terms = reorder_within(terms, abs(value), component)) %>%
   ggplot(aes(abs(value), terms, fill = value > 0)) +
@@ -152,11 +95,47 @@ tidied_pca %>%
   facet_wrap(~component, scales = "free_y") +
   scale_y_reordered() +
   labs(
-    x = "Absolute value of contribution",
-    y = NULL, fill = "Positive?"
+    x = "Absolute value of contribution in Top 5 PC",
+    y = NULL, fill = "Positive"
   )
-
-
 ```
 
 
+<p>After performing PCA on the dataset, we visualize the results to see the contribution of each element in the top 5 PCA components.</p>
+
+<p>We observe that 'x', 'y', 'z', and 'carat' have similar and significant contributions in PC1, suggesting a correlation among them.</p>
+
+<p>In PC2, 'table' and 'cut' show higher loadings, and in PC3, 'depth' and 'cut' are prominent, indicating possible relationships between these attributes.</p>
+
+<p>PC4 and PC5 highlight strong loadings for 'color' and 'clarity', underlining their importance and interrelation in these components.</p>
+
+<p>From each PC, the strongest contributors—'carat', 'table', 'depth', 'color', and 'clarity'—are selected to construct a linear model to predict diamond prices.</p>
+
+
+```{r}
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+split_data <- initial_split(diamonds_df, prop = 0.8, strata = "price")
+train_data <- training(split_data)
+test_data <- testing(split_data)
+
+# Create a linear regression model using carat, table, depth, and color as predictors
+lm_model <- lm(price ~ carat + table + depth + color + clarity, data = train_data)
+
+# Make predictions on the test data
+test_predictions <- predict(lm_model, newdata = test_data)
+
+# Add predictions to the test data
+test_data <- test_data %>%
+  mutate(predicted_price = test_predictions)
+
+# Plot the predicted prices against the actual prices
+ggplot(test_data, aes(x = price, y = predicted_price)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(color = "red", linetype = "dashed") +
+  labs(x = "Actual Price", y = "Predicted Price", title = "Predicted vs Actual Prices") +
+  theme_minimal()
+
+
+```
+可以看到，拟合的结果相当的不错。这毫无疑问说明了PCA效果很好，即使只是提取其中top5 pC中最重要的载荷也依然效果突出能够代表数据集中的特征。
