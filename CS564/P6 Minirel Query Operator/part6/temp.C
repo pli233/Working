@@ -85,63 +85,60 @@ const Status ScanSelect(const string &result,
 {
 	cout << "Doing HeapFileScan Selection using ScanSelect()" << endl;
 
-
+	Status status;
 	Record outputRec;
 	RID rid;
 	Record rec;
 
+	InsertFileScan resultRel(result, status);
+	if (status != OK)
+	{
+		return status;
+	}
 
-	// 1. Have a temporary record for output table
 	outputRec.length = reclen;
 	outputRec.data = (char *)malloc(reclen);
 
-	// 2. Open "result" as an InsertFileScan object
-	Status status;
-	InsertFileScan resultRel(result, status);
-	if (status != OK){
-		return status;
-	}
-
-	// 3. Open current table (to be scanned) as a HeapFileScan object
-    HeapFileScan hfs(projNames[0].relName, status);
-    if (status != OK){
-        return status;
-	}
-
-	//4. check if an unconditional scan is required
-	int intValue; 
-	float floatValue; 
-	if (attrDesc == NULL) {
-		status = hfs.startScan(0, 0, STRING,  NULL, EQ); // 使用 NULL 作为 filter，并设定 op 为 EQ
-	}
-	//5. check attrType: INTEGER, FLOAT, STRING
-	else {
-		switch (attrDesc->attrType) {
-			case STRING:
-				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, STRING, filter, (Operator)op); // 使用字符串作为 filter，并将 op 转换为 Operator 类型
-				break;
-			case INTEGER: {
-				intValue = atoi(filter);
-				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, INTEGER, (char*)&intValue, (Operator)op); // 使用整数作为 filter，并将 op 转换为 Operator 类型
-				break;
-			}
-			case FLOAT: {
-				floatValue = atof(filter);
-				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, FLOAT, (char*)&floatValue, (Operator)op); // 使用浮点数作为 filter，并将 op 转换为 Operator 类型
-				break;
-			}
-		}
-	}
-
-	//check the start scan of hfs successfully
-	if (status != OK){
-		return status;
-	}
-
-	//6. Use while loop to search, if find a record, then copy stuff over to the temporary record
-	while (hfs.scanNext(rid) == OK)
+	// start scan
+	cout << "Starting Scan" << endl; // debugging
+	HeapFileScan scan(projNames[0].relName, status);
+	if (status != OK)
 	{
-		status = hfs.getRecord(rec);
+		return status;
+	}
+	cout << "Check Type" << endl; // debugging
+	// start scan for different data types
+	int toInt;
+	float toFloat;
+	if (attrDesc == NULL)
+	{
+		status = scan.startScan(0, 0, STRING, NULL, EQ);
+	}
+	else if (attrDesc->attrType == STRING)
+	{
+		status = scan.startScan(attrDesc->attrOffset, attrDesc->attrLen, STRING, filter, op);
+	}
+	else if (attrDesc->attrType == FLOAT)
+	{
+		toFloat = atof(filter);
+		status = scan.startScan(attrDesc->attrOffset, attrDesc->attrLen, FLOAT, (char *)&toFloat, op);
+	}
+	else if (attrDesc->attrType == INTEGER)
+	{
+		toInt = atoi(filter);
+		status = scan.startScan(attrDesc->attrOffset, attrDesc->attrLen, INTEGER, (char *)&toInt, op);
+	}
+
+	// check if startScan works as expected
+	if (status != OK)
+	{
+		return status;
+	}
+
+	cout << "scanning..." << endl; // debugging
+	while (scan.scanNext(rid) == OK)
+	{
+		status = scan.getRecord(rec);
 		if (status != OK)
 		{
 			return status;
@@ -161,12 +158,11 @@ const Status ScanSelect(const string &result,
 		}		
 	}
 
-	//7. Enc Scan and check status
-	status = hfs.endScan();
-	if (status != OK){
+	cout << "Scan finished" << endl; // debugging
+	status = scan.endScan();
+	if (status != OK)
+	{
 		return status;
 	}
-
-	//8. everything done
 	return OK;
 }
