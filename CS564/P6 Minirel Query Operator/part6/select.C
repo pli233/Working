@@ -88,89 +88,88 @@ const Status ScanSelect(const string & result,
 {
     cout << "Doing HeapFileScan Selection using ScanSelect()" << endl;
 
+	// 1. Have a temporary record for output table
+	char outputData[reclen];
 
-    Status status;
-    RID rid;
-    Record rec;
-    int i;
-    Datatype t;
-
-    Record resultRec;
-    char outputData[reclen];
-    resultRec.data = (void *)outputData;
-    resultRec.length = reclen;
-    int outputOffset;
-
-    // 打开关系文件以读取，并打开结果文件以写入
+	// 2. Open "result" as an InsertFileScan object
+	Status status;
     InsertFileScan resultFile(result, status);
-    if (status != OK)
+    if (status != OK){
         return status;
+	}
+
+	// 3. Open current table (to be scanned) as a HeapFileScan object
     HeapFileScan relFile(projNames[0].relName, status);
-    if (status != OK)
+    if (status != OK){
         return status;
+	}
 
-    void *realFilter;
+	//4. check if an unconditional scan is required
+	void *realFilter;
+    Datatype dt;
 
-    // 设置扫描条件
-    if (filter != NULL)
-    {
-        // 如果给定了特定的筛选器，执行可能的数据转换
-        switch (attrDesc->attrType)
-        {
-        case 1:
-        {
-            t = INTEGER;
-            int iVal = atoi(filter);
-            realFilter = &iVal;
-            break;
-        }
-        case 2:
-        {
-            t = FLOAT;
-            float fVal = atof(filter);
-            realFilter = &fVal;
-            break;
-        }
-        case 0:
-        {
-            t = STRING;
-            realFilter = (void *)filter;
-            break;
-        }
-        }
-        status = relFile.startScan(attrDesc->attrOffset, attrDesc->attrLen, t, (char *)realFilter, op);
-    }
-    else
-    {
-        // 没有给定特定的筛选器；设置为顺序扫描
-        status = relFile.startScan(attrDesc->attrOffset, attrDesc->attrLen, t, NULL, op);
-    }
+	if (filter == nullptr){
+		realFilter = NULL;
+	}
 
-    if (status != OK)
+	//5. check attrType: INTEGER, FLOAT, STRING
+	else{
+		switch (attrDesc->attrType){
+			case INTEGER:{
+				dt = INTEGER;
+				int iVal = atoi(filter);
+				realFilter = &iVal;
+				break;
+			}
+			case FLOAT:{
+				dt = FLOAT;
+				float fVal = atof(filter);
+				realFilter = &fVal;
+				break;
+			}
+			case STRING:{
+				dt = STRING;
+				realFilter = const_cast<char *>(filter); // No need for conversion
+				break;
+			}
+			default:
+				return BADCATPARM; // Invalid attribute type
+    	}
+	}
+
+	// 6. scan the current table
+	status = relFile.startScan(attrDesc->attrOffset, attrDesc->attrLen, dt, (char *)realFilter, op);
+    if (status != OK){
         return status;
+	}
 
-    while (relFile.scanNext(rid) == OK)
-    {
-        // 当前记录符合搜索条件
+	// 7. Use while loop to search, if find a record, then copy stuff over to the temporary record
+	RID rid;
+    Record rec;
+    Record resultRec;
+    resultRec.data = outputData;
+    resultRec.length = reclen;
+	RID outRid;
+	while (relFile.scanNext(rid) == OK){
+		// Get the record
+		if ((status = relFile.getRecord(rec)) != OK){
+			return status;
+		}
 
-        // 获取记录
-        if ((status = relFile.getRecord(rec)) != OK)
-            return status;
 
-        // 1) 从投影中创建新记录
-        outputOffset = 0;
-        for (i = 0; i < projCnt; i++)
-        {
-            memcpy(outputData + outputOffset, (char *)rec.data + projNames[i].attrOffset, projNames[i].attrLen);
-            outputOffset += projNames[i].attrLen;
-        }
+		// Create a new record from the projection
+		int outputOffset = 0;
+		for (int i = 0; i < projCnt; i++){
+			memcpy(outputData + outputOffset, (char *)rec.data + projNames[i].attrOffset, projNames[i].attrLen);
+			outputOffset += projNames[i].attrLen;
+		}
 
-        // 2) 存储到结果文件中
-        RID outRID;
-        status = resultFile.insertRecord(resultRec, outRID);
-        if (status != OK)
-            return status;
-    }
+		// Store the record in the result file
+		if ((status = resultFile.insertRecord(resultRec, outRid)) != OK){
+			return status;
+		}
+	}
 
+	// Return OK if the loop completes successfully
     return OK;
 }
