@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include "catalog.h"
 #include "query.h"
+
 
 /*
  * Deletes records from a specified relation.
@@ -10,112 +10,98 @@
  * 	an error code otherwise
  */
 
-const Status QU_Delete(const string &relation,
-                       const string &attrName,
-                       const Operator op,
-                       const Datatype type,
-                       const char *attrValue)
-
+const Status QU_Delete(const string & relation, 
+		       const string & attrName, 
+		       const Operator op,
+		       const Datatype type, 
+		       const char *attrValue)
 {
+// 1. Validate relation name
+	if (relation.empty())
+	{
+		return BADCATPARM;
+	}
 
-  // check if relation table is empty then proceed
-  if (relation.empty())
-  {
-    return BADCATPARM;
-  }
+	// 2. Create hfs, relevent and check status
+	Status status;
+	RID rid;
+	AttrDesc *attrDesc = new AttrDesc;
+	HeapFileScan hfs(relation, status);
 
-  Status status;
-  RID rid;
-  AttrDesc attrD;
-  HeapFileScan *scanner;
+	// Abort if the initial file scan setup fails.
+	if (status != OK)
+	{
+		return status;
+	}
 
-  // Where clause is empty
-  if (attrName.empty())
-  {
+	// 3. Start a scan; check if an unconditional scan is necessary
 
-    // creating scanner object
-    scanner = new HeapFileScan(relation, status);
-    if (status != OK)
-    {
-      return status;
-    }
+	// Careful!! need to declare these value in larger scope so we declare here instead inside of cases
+	int intVal;
+	float floatVal;
+	if (attrName.empty())
+	{
+		// Use unconditional scan
+		status = hfs.startScan(0, 0, STRING, NULL, op);
+	}
+	else
+	{
+		// getting information about attribute
+		status = attrCat->getInfo(relation, attrName, *attrDesc);
+		if (status != OK)
+		{
+			return status;
+		}
 
-    // start the scan
-    scanner->startScan(0, 0, STRING, NULL, EQ);
-    // iterate and call next in scanner object to go over the results and deleting the records
-    while ((status = scanner->scanNext(rid)) != FILEEOF)
-    {
-      status = scanner->deleteRecord();
-      if (status != OK)
-      {
-        return status;
-      }
-    }
-  }
+		// 4. check attrType: INTEGER, FLOAT, STRING
+		switch (type)
+		{
+			case INTEGER:
+			{
+				intVal = atoi(attrValue);
+				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, INTEGER, (char *)&intVal, op);
+				break;
+			}
 
-  else
-  {
+			case FLOAT:
+			{
+				floatVal = atof(attrValue);
+				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, FLOAT, (char *)&floatVal, op);
+				break;
+			}
+			case STRING:
+			{
+				status = hfs.startScan(attrDesc->attrOffset, attrDesc->attrLen, STRING, attrValue, op);
+				break;
+			}
+		}
+	}
 
-    // creating Scanner object
-    scanner = new HeapFileScan(relation, status);
-    if (status != OK)
-    {
-      return status;
-    }
+	// check start scan status
+	if (status != OK)
+	{
+		return status;
+	}
 
-    // getting information about attribute
-    status = attrCat->getInfo(relation, attrName, attrD);
-    if (status != OK)
-    {
-      return status;
-    }
+	// 5. Iterate over all records that meet the condition and delete them.
+	while ((status = hfs.scanNext(rid)) == OK)
+	{
+		status = hfs.deleteRecord();
+		if (status != OK)
+		{
+			return status;
+		}
+	}
 
-    // Switch which starts scan based on data type
-    int intVal;
-    float floatVal;
-    switch (type)
-    {
-    case INTEGER:
+	if (status != FILEEOF)
+	{
+		return status;
+	}
 
-      intVal = atoi(attrValue);
-      status = scanner->startScan(attrD.attrOffset, attrD.attrLen, type, (char *)&intVal, op);
-      break;
+	// 6. Close the scan once complete.
+	hfs.endScan();
 
-    case FLOAT:
-      floatVal = atof(attrValue);
-      status = scanner->startScan(attrD.attrOffset, attrD.attrLen, type, (char *)&floatVal, op);
-      break;
-
-      // default condition i.e string
-    default:
-      status = scanner->startScan(attrD.attrOffset, attrD.attrLen, type, attrValue, op);
-      break;
-    }
-
-    if (status != OK)
-    {
-      return status;
-    }
-
-    // iterate and call next in scanner object to go over the results and deleting the records
-    while ((status = scanner->scanNext(rid)) == OK)
-    {
-      status = scanner->deleteRecord();
-      if (status != OK)
-      {
-        return status;
-      }
-    }
-  }
-
-  if (status != FILEEOF)
-  {
-    return status;
-  }
-
-  // scan finished
-  scanner->endScan();
-  delete scanner;
-
-  return OK;
+	return OK;
 }
+
+
