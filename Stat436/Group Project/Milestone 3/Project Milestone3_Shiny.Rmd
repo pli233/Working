@@ -36,16 +36,40 @@ preprocess_dataset <- function(data) {
 ```
 
 
-#3. Data Preprocess
+
 ```{r}
-source_of_fund <- preprocess_dataset(read_csv("data/source_of_fund.csv"))
+#3. Data Preprocess
+source_of_fund <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/source_of_fund.csv"))
 #3.2 field_of_study
-field_of_study <- read_csv("data/field_of_study.csv")
-fos_tree <- preprocess_dataset(field_of_study)
+field_of_study <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/field_of_study.csv"))
+
+#3.3 map_data
+origin <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/origin.csv"))
 
 
 #3.3 map_data
-origin <- preprocess_dataset(read_csv("data/origin.csv"))
-
+academic_detail <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/academic_detail.csv"))
 ```
 
+
+```{r}
+academic_detail
+
+# Create a grouped bar chart with custom hover text
+plot <- academic_detail %>%
+  group_by(year, academic_level) %>%
+  summarise(total_students = sum(students), .groups = 'drop') %>%
+  mutate(hover_text = paste("Year: ", year, 
+                            "<br>Academic Level: ", academic_level, 
+                            "<br>Students: ", total_students)) %>%
+  plot_ly(x = ~year, y = ~total_students, type = 'bar', color = ~academic_level,
+          colors = RColorBrewer::brewer.pal(8, "Set2"),
+          text = ~hover_text, hoverinfo = "text") %>%
+  layout(yaxis = list(title = 'Number of Students'),
+         barmode = 'stack',
+         xaxis = list(title = 'Year'),
+         title = 'Students Distribution by Academic Level Over Years')
+
+# Display the plot
+plot
+```

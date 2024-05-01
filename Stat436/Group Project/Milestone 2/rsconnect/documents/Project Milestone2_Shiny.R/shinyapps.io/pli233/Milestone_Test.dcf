@@ -1,0 +1,12 @@
+name: Milestone_Test
+title: Milestone_Test
+username: pli233
+account: pli233
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11908713
+bundleId: 8562784
+url: https://pli233.shinyapps.io/Milestone_Test/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

@@ -1,5 +1,5 @@
 #1. Include all required library
-# Required Libraries
+
 library(tidyverse)
 library(dplyr)
 library(tmap)
@@ -11,6 +11,14 @@ library(plotly)
 library(shiny)
 library(shinydashboard) 
 library(shinyWidgets) 
+# uncomment below line to install d3treeR
+# devtools::install_github("timelyportfolio/d3treeR") 
+
+# Install d3treeR if not already installed
+if (!requireNamespace("d3treeR", quietly = TRUE)) {
+  devtools::install_github("timelyportfolio/d3treeR")
+}
+library(d3treeR)
 
 # Preprocess Dataset Function
 preprocess_dataset <- function(data) {
@@ -19,14 +27,10 @@ preprocess_dataset <- function(data) {
 }
 
 # Load and Preprocess Data
-source_of_fund <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/source_of_fund.csv"))
-field_of_study <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/field_of_study.csv"))
-origin <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/origin.csv"))
-academic_detail <- preprocess_dataset(read_csv("https://raw.githubusercontent.com/pli233/Working/main/Stat436/Group%20Project/data/academic_detail.csv"))
+source_of_fund <- preprocess_dataset(read_csv("data/source_of_fund.csv"))
+field_of_study <- preprocess_dataset(read_csv("data/field_of_study.csv"))
+origin <- preprocess_dataset(read_csv("data/origin.csv"))
 
-
-
-#map data
 data("World")
 world <- World |>
   select(c('sovereignt',"geometry")) |>
@@ -54,18 +58,27 @@ custom_breaks <- function(x) {
 
 #4.1 pie graph generator
 pie <- function(df) {
+  #process data
   filtered_df <- df %>%
     filter(selected) %>%
     group_by(source_of_fund) %>%
     summarize(students = sum(students)) %>%
-    mutate(percentage = round(students / sum(students) * 100, 1))  # Calculate percentages
+    mutate(percentage = round(students / sum(students) * 100, 1),
+           label = ifelse(percentage > 5, paste0(percentage, "%"), NA))  # Only label slices >5% to avoid overlapping
   
-  plot_ly(filtered_df, labels = ~source_of_fund, values = ~students, type = 'pie',
-          textinfo = 'label+percent', hoverinfo = 'label+percent',
-          text = ~paste(source_of_fund, ": ", percentage, "%"),
-          marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))) 
+  #plot pie graph
+  ggplot(filtered_df, aes(x = 1, y = students, fill = source_of_fund)) +
+    geom_bar(width = 1, stat = "identity") +
+    coord_polar(theta = "y") +
+    theme_void() +
+    geom_text(aes(label = label), position = position_stack(vjust = 0.5), color = "black", size = 3.5) +
+    scale_fill_brewer(palette = "Set3") +
+    labs(fill = "Source of Fund", y = "Students", x = "") +
+    theme(legend.position = "right",
+          legend.direction = "vertical",
+          legend.title = element_text(size = 12),
+          legend.text = element_text(size = 10))
 }
-
 
 #4.2 map graph generator
 map <- function(df) {
@@ -79,12 +92,7 @@ map <- function(df) {
     tm_layout(legend.title.size = 0.8, legend.text.size = 0.6)
 }
 
-
-
-
-
 # Shiny UI
-# UI Setup
 ui <- dashboardPage(
   dashboardHeader(title = "International Education in the US"),
   dashboardSidebar(
@@ -93,16 +101,16 @@ ui <- dashboardPage(
                sliderInput("yearRange", "Year of Release:", min = 1990, max = 2022, value = c(1990, 2022), step = 1)),
       menuItem("Source of Fund", tabName = "fundSource", icon = icon("money-check-dollar")),
       menuItem("Student Origin", tabName = "studentOrigin", icon = icon("globe")),
-      menuItem("Field Of Study", tabName = "fieldOfStudy", icon = icon("chart-line")),
-      menuItem("Students Type", tabName = "studentsType", icon = icon("user-graduate"))
+      menuItem("Interactive Plots", tabName = "interactivePlots", icon = icon("chart-line"))
     )
   ),
   dashboardBody(
     tabItems(
       tabItem(tabName = "filters", h3("Use the slider to select the year range for your analysis."), tags$hr()),
-      tabItem(tabName = "fundSource", plotlyOutput("pie")),
+      tabItem(tabName = "fundSource", plotOutput("pie")),
       tabItem(tabName = "studentOrigin", plotOutput("map")),
-      tabItem(tabName = "fieldOfStudy", fluidPage(
+      tabItem(tabName = "interactivePlots", fluidPage(
+        titlePanel("Interactive Plots of Student Data"),
         sidebarLayout(
           sidebarPanel(
             selectInput("yAxisType", "Select Y-Axis Data Type:", choices = c("Absolute Number" = "absolute", "Percentage" = "percentage")),
@@ -110,10 +118,6 @@ ui <- dashboardPage(
           ),
           mainPanel(plotlyOutput("interactivePlot"))
         )
-      )),
-      tabItem(tabName = "studentsType", fluidPage(
-        titlePanel("Students Type Over Years"),
-        mainPanel(plotlyOutput("studentTypePlot"))
       ))
     )
   )
@@ -127,13 +131,12 @@ server <- function(input, output) {
     list(
       fund_subset = source_of_fund %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
       test_subset = test %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
-      field_of_study_subset = field_of_study %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
-      academic_detail_subset =  academic_detail %>% filter(year >= input$yearRange[1] & year <= input$yearRange[2])
+      interactive_plot_subset = field_of_study %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2]))
     )
   })
   
   # Plots and UI rendering
-  output$pie <- renderPlotly({ pie(subset_by_year()$fund_subset) })
+  output$pie <- renderPlot({ pie(subset_by_year()$fund_subset) })
   
   
   
@@ -143,12 +146,12 @@ server <- function(input, output) {
   
   # Interactive plot logic
   output$fieldCheckbox <- renderUI({
-    fields <- unique(subset_by_year()$field_of_study_subset$field_of_study)
+    fields <- unique(subset_by_year()$interactive_plot_subset$field_of_study)
     checkboxGroupInput("selectedFields", "Select Fields of Study:", choices = fields, selected = fields)
   })
   
   data_to_plot <- reactive({
-    data <- subset_by_year()$field_of_study_subset %>%
+    data <- subset_by_year()$interactive_plot_subset %>%
       filter(!is.na(students), field_of_study %in% input$selectedFields)
     
     if (input$yAxisType == "percentage") {
@@ -181,16 +184,6 @@ server <- function(input, output) {
     ggplotly(p, tooltip = "text")  # Using the 'text' aesthetic for tooltips
   })
   
-  # Plot for student types
-  output$studentTypePlot <- renderPlotly({
-    data <- subset_by_year()$academic_detail_subset
-    plot_ly(data, x = ~year, y = ~students, color = ~academic_level, type = 'bar', text = ~paste("Year:", year, "<br>Academic Level:", academic_level, "<br>Students:", students),
-            hoverinfo = "text") %>%
-      layout(yaxis = list(title = 'Number of Students'),
-             barmode = 'stack',
-             xaxis = list(title = 'Year'),
-             title = 'Students Distribution by Academic Level Over Years')
-  })
   
 }
 

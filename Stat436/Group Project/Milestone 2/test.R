@@ -1,16 +1,9 @@
 #1. Include all required library
 # Required Libraries
 library(tidyverse)
-library(dplyr)
-library(tmap)
-library(treemap)
-library(ggplot2)
-library(devtools)
-library(d3treeR)
 library(plotly)
 library(shiny)
-library(shinydashboard) 
-library(shinyWidgets) 
+library(shinydashboard)
 
 # Preprocess Dataset Function
 preprocess_dataset <- function(data) {
@@ -63,7 +56,14 @@ pie <- function(df) {
   plot_ly(filtered_df, labels = ~source_of_fund, values = ~students, type = 'pie',
           textinfo = 'label+percent', hoverinfo = 'label+percent',
           text = ~paste(source_of_fund, ": ", percentage, "%"),
-          marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))) 
+          marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))) %>%
+    layout(title = 'Source of Fund Distribution',
+           autosize = TRUE,
+           width = 900,  # Adjust width as needed
+           height = 700,  # Adjust height as needed
+           margin = list(l = 50, r = 50, b = 50, t = 100),  # Adjust margins: left, right, bottom, top
+           showlegend = TRUE
+    )
 }
 
 
@@ -79,12 +79,7 @@ map <- function(df) {
     tm_layout(legend.title.size = 0.8, legend.text.size = 0.6)
 }
 
-
-
-
-
 # Shiny UI
-# UI Setup
 ui <- dashboardPage(
   dashboardHeader(title = "International Education in the US"),
   dashboardSidebar(
@@ -93,8 +88,7 @@ ui <- dashboardPage(
                sliderInput("yearRange", "Year of Release:", min = 1990, max = 2022, value = c(1990, 2022), step = 1)),
       menuItem("Source of Fund", tabName = "fundSource", icon = icon("money-check-dollar")),
       menuItem("Student Origin", tabName = "studentOrigin", icon = icon("globe")),
-      menuItem("Field Of Study", tabName = "fieldOfStudy", icon = icon("chart-line")),
-      menuItem("Students Type", tabName = "studentsType", icon = icon("user-graduate"))
+      menuItem("Field Of Study", tabName = "fieldOfStudy", icon = icon("chart-line"))
     )
   ),
   dashboardBody(
@@ -110,10 +104,6 @@ ui <- dashboardPage(
           ),
           mainPanel(plotlyOutput("interactivePlot"))
         )
-      )),
-      tabItem(tabName = "studentsType", fluidPage(
-        titlePanel("Students Type Over Years"),
-        mainPanel(plotlyOutput("studentTypePlot"))
       ))
     )
   )
@@ -127,8 +117,7 @@ server <- function(input, output) {
     list(
       fund_subset = source_of_fund %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
       test_subset = test %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
-      field_of_study_subset = field_of_study %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2])),
-      academic_detail_subset =  academic_detail %>% filter(year >= input$yearRange[1] & year <= input$yearRange[2])
+      field_of_study_subset = field_of_study %>% mutate(selected = (year >= input$yearRange[1]) & (year <= input$yearRange[2]))
     )
   })
   
@@ -181,16 +170,6 @@ server <- function(input, output) {
     ggplotly(p, tooltip = "text")  # Using the 'text' aesthetic for tooltips
   })
   
-  # Plot for student types
-  output$studentTypePlot <- renderPlotly({
-    data <- subset_by_year()$academic_detail_subset
-    plot_ly(data, x = ~year, y = ~students, color = ~academic_level, type = 'bar', text = ~paste("Year:", year, "<br>Academic Level:", academic_level, "<br>Students:", students),
-            hoverinfo = "text") %>%
-      layout(yaxis = list(title = 'Number of Students'),
-             barmode = 'stack',
-             xaxis = list(title = 'Year'),
-             title = 'Students Distribution by Academic Level Over Years')
-  })
   
 }
 
