@@ -31,8 +31,7 @@ library(shiny)
 
 <h2>Coding 1 Bike Demand [3 points]</h2>
 
-<p>This problem asks you to visualize a dataset of hourly bikeshare
-demand:</p>
+<p>This problem asks you to visualize a dataset of hourly bikeshare demand:</p>
 
 ```{r}
 bike_data <- read_csv("https://uwmadison.box.com/shared/static/f16jmkkskylfl1hnd5rpslzduja929g2.csv")
@@ -44,21 +43,23 @@ across the 7 days of the week (weekday)</h3>
 
 ```{r}
 
-#Select required data and rename them properly
-q1 <- bike_data %>%
-  dplyr::select(weekday, hr, count) %>%
-  mutate(weekday = factor(weekday, levels = 0:6, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))) %>%
-  group_by(hr, weekday) %>%
-  summarise(summary = sum(count))
 
+# Convert 'weekday' to a factor if it's not already
+q1 <- bike_data %>%
+  mutate(yr = yr + 2011) %>%
+  mutate(weekday = factor(weekday, levels = 0:6, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))) %>%
+  rename(year = yr, hour = hr) # Renaming the columns
 
 # Plotting with geom_line
-ggplot(q1, aes(x = hr, y = summary)) + # Ensure that we group by weekday for the line plot
-  geom_line(aes(color = weekday)) + 
-  facet_wrap(~weekday) + # Facets for each weekday
-  labs(x = "Hour of the Day", y = "Count of Bike Rentals", title = "Bike Demand by Hour Across the Week") +
+ggplot(q1, aes(x = hour, y = count, group = dteday)) + 
+  geom_line(aes(color = weekday)) + #color lines by weekday
+  scale_color_manual(values = c("red", "orange", "yellow", "green", "blue", "#4b0082", "violet"))+ #fix the color 
+  facet_wrap(~weekday)+
+  labs(x = "Hour of the Day", 
+       y = "Count of Bike Rentals", 
+       title = "Bike Demand by Hour Across the Week") + #adding labs
   theme_minimal()+
-  theme(plot.title = element_text(hjust = 0.5)) # Center the title
+  theme(plot.title = element_text(hjust = 0.5))# Center the title
 ```
 
 <h3>b.Create a new summary data.frame giving the 25 and 75 percent
@@ -67,15 +68,12 @@ quantiles of demand (count) for each hour (hr) by day of the week
 was collected</h3>
 
 ```{r}
-q2 <- bike_data %>%
-  mutate(yr = yr + 2011) %>%
-  mutate(weekday = factor(weekday, levels = 0:6, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))) %>%
-  group_by(yr, weekday, hr) %>%
+q2 <- q1 %>%
+  group_by(year, weekday, hour) %>%
   summarise(
     Q25 = quantile(count, 0.25),
     Q75 = quantile(count, 0.75)
-  ) %>%
-  rename(year = yr, hour = hr) # Renaming the columns
+  ) 
 q2
 ```
 
@@ -88,53 +86,51 @@ first and second year that the data were collected</h3>
 # Since q2 contains summaries for each year, we will need to join this with q1 based on hr and weekday.
 # Assuming that q1 has been grouped and summarised without the year, we will need to account for this.
 
-# First, let's correct the renaming issue in the q2 data frame:
-q1 <- q1 %>%
-  rename(hour = hr) # Rename hr to hour
-
-# Now let's merge q1 and q2
+# Now merge q1 and q2
 q3 <- q1 %>%
   ungroup() %>% # Make sure q1 is not grouped
-  left_join(q2, by = c("weekday", "hour")) # Join q2 data to q1 data
+  left_join(q2, by = c("weekday", "hour", "year")) # Join q2 data to q1 data
 
-# Plotting with geom_ribbon and geom_line
-ggplot(q3, aes(x = hour, y = summary)) +
+# Plotting with geom_line
+ggplot(q3, aes(x = hour, y = count, group = dteday)) +
+  geom_line(aes(color = weekday)) + #color lines by weekday
   geom_ribbon(aes(ymin = Q25, ymax = Q75, fill = as.factor(year)), alpha = 0.8) +
-  geom_line(aes(color = weekday)) + 
-  facet_wrap(~weekday) + # Facets for each weekday
-  scale_fill_manual(values = c("blue", "red"), name = "Year") + # Set manual colors for the ribbon based on year
-  labs(x = "Hour of the Day", y = "Count of Bike Rentals", title = "Bike Demand by Hour Across the Week") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) # Center the title and move legend to bottom
+  scale_color_manual(values = c("red", "orange", "yellow", "green", "blue", "#4b0082", "violet"))+ #fix the color 
+  facet_wrap(~weekday)+
+  labs(x = "Hour of the Day", 
+       y = "Count of Bike Rentals", 
+       title = "Bike Demand by Hour Across the Week") + #adding labs
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))# Center the title
 ```
 
 <h3>d.Provide a brief description of some takeaways from the final
 visualization</h3>
 
-<p>Demand Patterns: There are clear patterns of demand based on the time
+<p>Demand Patterns of Weekday: There are clear patterns of demand based on the time
 of day. Demand peaks typically occur during what would be expected to be
-rush hours, suggesting that bike rentals are possibly used for commuting
+rush hours (8-10 am, 4-6 pm), suggesting that bike rentals are possibly used for commuting
 to and from work or school.</p>
 
 <p>Weekday vs. Weekend: The patterns for weekdays and weekends are
 noticeably different. Weekends (Saturday and Sunday) tend to have a
-single broad peak, which could indicate leisure or errand activities
-that are not bound to the strict schedules of a workday.</p>
+single broad peak, which could indicate leisure activities compare to the demand patterns  
+restricted by schedules of a workday.</p>
 
-<p>Quantile Ranges: The quantile ribbons show that there is variability
-in the demand. The width of the ribbons indicates the degree of
-consistency in bike demand. A narrow ribbon suggests that the demand is
-fairly consistent at that time, whereas a wider ribbon suggests more
-variability.</p>
 
-<p>Yearly Comparison: The use of different colors for ribbons from
-different years allows us to compare demand across years. For example,
-if the red ribbon (for 2011) consistently lies above or below the blue
-ribbon (for 2012) at certain times, this could indicate a change in
-usage patterns or bike rental availability from one year to the
-next.</p>
+<p>Yearly Comparison: For each weekday we can compare the two different ribbon,
+for 2011 and 2012. Its noticeably that 2012's Q25-Q75 range is always stay beyond 2011's Q25-Q75 range. 
+This could indicate a change in usage patterns or bike rental availability from 2011 year to 2012 
+lead to this huge increase bike demand.</p>
 
-<h2>Coding 2 & Discussion Geospatial Datasets [3 points]</h2>
+
+
+
+<h2>Coding 2 & Discussion 1 Geospatial Datasets [3 points]</h2>
+
+<p>For each of the datasets below, specify whether it is in a vector or raster data
+format. If it is in a vector data format, explain which types of geometries it contains (e.g., a point or
+linestring). Explain your reasoning.</p>
 
 <h3>a.NYC Building Footprints</h3>
 
@@ -176,7 +172,7 @@ wi_ev_charging <- read_sf("https://raw.githubusercontent.com/krisrs1128/stat436_
 wi_ev_charging %>% dplyr::select(geometry)
 ```
 
-<p>The Himalayan Glacial Lakes is a .geojson file, it implies that the
+<p>The Wisconsin EV Charging is a .geojson file, it implies that the
 data is in a vector format. It contains geometries of type Point because
 its gemoetry is presented as \<S3: sfc_POINT\></p>
 
@@ -200,7 +196,7 @@ tm_shape(zion_evl) +
   tm_raster() 
 ```
 
-<h2>Coding3 Political Book Recommendations [4 points]</h2>
+<h2>Coding 3 Political Book Recommendations [4 points]</h2>
 
 <p>[Political Book Recommendations] In this problem, we’ll study a
 network dataset of Amazon bestselling US Politics books. Books are
@@ -246,12 +242,14 @@ labeled one</p>
 
 ```{r}
 ggraph(book_graph, "matrix") +
+  geom_node_point(aes(col = political_ideology), x = -1) +
+  geom_node_point(aes(col = political_ideology), y = 1) +
   geom_edge_tile(mirror = TRUE) + #its not directed so mirror, its ok not mirror as well
   coord_fixed() #make sure grid are square
 ```
 
 <p>What is easy to see in the node-link view: It's easier to trace the
-connection between two nodes.</p>
+connection between two specific nodes. (ie linked or not)</p>
 
 <p>Example Query: Which books are recommended together with the book
 "All the Shah's Men"?</p>
@@ -317,7 +315,7 @@ ggplot(long_centroids, aes(x = factor(cluster), y = Value, fill = Attribute)) +
   theme_minimal() +
   labs(x = "Cluster", y = "Value", fill = "Attribute")
 ```
-
+<p>Interpretation: </p>
 <p>If one feature has particularly high or low values across clusters,
 it could be an important distinguishing feature for clustering.</p>
 
@@ -342,7 +340,9 @@ ggplot(stressor_wide, aes(x = time, y = .cluster)) +
   geom_point(aes(col = state)) + 
   facet_wrap(~ state, ncol = 10) + # Facets by state
   theme_minimal() +
-  labs(x = "Time", y = "Cluster", title = "Cluster Memberships Over Time") +
+  labs(x = "Time", 
+       y = "Cluster", 
+       title = "Cluster Memberships Over Time") +
   theme(
     axis.text.x = element_blank(), # Hide y axis text, time too long
     legend.position = "none", #Hide color legend
@@ -362,7 +362,7 @@ as Wisconsin and North Carolina. This may suggest that there are factors
 influencing the stress percentages in these states that change over
 time.</p>
 
-<h2>Discussion2: Olympics Interactive App [3 points]</h2>
+<h2>Discussion 2: Olympics Interactive App [3 points]</h2>
 
 <p>The code below sets up a Shiny app for interactively visualizing
 athlete weight and heights in the 2012 London Olympics. We would like to
@@ -381,7 +381,7 @@ olympics <- read_csv("https://uwmadison.box.com/shared/static/rzw8h2x6dp5693gdbp
 #' larger / darker
 scatterplot <- function(df) {
   ggplot(df) +
-  geom_point(aes(Weight, `Height, cm`,alpha = as.numeric(selected),size = as.numeric(selected))) +
+    geom_point(aes(Weight, `Height, cm`,alpha = as.numeric(selected),size = as.numeric(selected))) +
   scale_alpha(range = c(0.05, .8)) +
   scale_size(range = c(0.1, 1))
 }
@@ -390,7 +390,7 @@ ui <- fluidPage(
   plotOutput("scatterplot")
 )
 server <- function(input, output) {
-  #Answer of question a starts here:
+  # Answer of question a starts here:
   # Reactive expression to filter data based on selected sports
   filtered_data <- reactive({
     if (length(input$dropdown) == 0) {
@@ -428,7 +428,7 @@ ui <- fluidPage(
   dataTableOutput("table")
 )
 server <- function(input, output) {
-  #Answer of question b starts here:
+  # Answer of question b starts here:
   # Reactive expression to filter data based on selected sports
   filtered_data <- reactive({
     if (length(input$dropdown) == 0) {
@@ -452,7 +452,9 @@ server <- function(input, output) {
   })
 }
 ```
-
+<p>Describe changes to your solution to (a) to meet the new requirements. How would you minimize code
+duplication? Be as specific as possible.</p>
+</br>
 <p>I add output\$table using renderDataTable. This outputs a table using
 a filtered version of the filtered_data reactive expression. The same
 filtered_data expression is used for both the scatterplot and the data

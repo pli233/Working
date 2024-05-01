@@ -1,0 +1,13 @@
+name: Group-Milestone2-Shiny
+title: Group-Milestone2-Shiny
+username: pli233
+account: pli233
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11585250
+bundleId: 8416867
+url: https://pli233.shinyapps.io/Group-Milestone2-Shiny/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Project Mileston2_Test.Rmd|Milestone 1

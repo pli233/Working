@@ -1,0 +1,4 @@
+All the works are distributed quite evenly within the team, and we helped each other out when working on the project.
+PEIYUAN LI: Implemented select.C, and debug for all other functions.
+NIANZE GUO: Wrote delete.C , and debug for all other functions.
+PEICHUAN YANG: Wrote insert.C, and debug for all other functions.

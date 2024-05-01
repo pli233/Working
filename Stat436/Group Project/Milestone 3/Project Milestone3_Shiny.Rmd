@@ -1,0 +1,51 @@
+---
+title: "Stat 436 Homework-4"
+author: "Peiyuan Li"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+    fig_width: 6
+    fig_height: 4
+    df_print: paged
+  pdf_document:
+    toc: true
+---
+```{r setup}
+# Set global chunk options to suppress warnings and messages for a cleaner output
+knitr::opts_chunk$set(warnings = FALSE, message = FALSE)
+
+# Load necessary libraries for data manipulation, visualization, and modeling
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(tidymodels)
+library(broom)
+library(tidytext)
+```
+
+```{r}
+#2. Create Function to preprocess datasets by separating 'year' column
+preprocess_dataset <- function(data) {
+  filtered_data <- data %>% separate(year, sep = "/", into = "year", convert = TRUE, extra = "drop")
+  return(filtered_data)
+}
+```
+
+
+#3. Data Preprocess
+```{r}
+source_of_fund <- preprocess_dataset(read_csv("data/source_of_fund.csv"))
+#3.2 field_of_study
+field_of_study <- read_csv("data/field_of_study.csv")
+fos_tree <- preprocess_dataset(field_of_study)
+
+
+#3.3 map_data
+origin <- preprocess_dataset(read_csv("data/origin.csv"))
+
+```
+

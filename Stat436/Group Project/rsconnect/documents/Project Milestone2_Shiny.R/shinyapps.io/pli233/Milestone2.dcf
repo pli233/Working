@@ -1,0 +1,13 @@
+name: Milestone2
+title: Milestone2
+username: pli233
+account: pli233
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11585488
+bundleId: 8416874
+url: https://pli233.shinyapps.io/Milestone2/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Project Mileston2_Test.Rmd|Milestone 1
