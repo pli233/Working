@@ -65,7 +65,7 @@ pie <- function(df) {
           textinfo = 'label+percent', hoverinfo = 'label+percent',
           marker = list(colors = RColorBrewer::brewer.pal(8, "Set3")), rotation=15) %>%
     layout(title = "Source of Funds",
-      legend = list(y = 0.5))
+           legend = list(y = 0.5))
 }
 
 
@@ -101,101 +101,102 @@ map <- function(df) {
 
 bar <- function(df) {
   plot_ly(df, x = ~year, y = ~students, color = ~academic_level, type = 'bar', text = ~paste("Year:", year, "<br>Academic Level:", academic_level, "<br>Students:", students),
-        hoverinfo = "text", height = 500) %>%
-  layout(yaxis = list(title = 'Number of Students'),
-         barmode = 'stack',
-         xaxis = list(title = 'Year'),
-         title = 'Students Distribution by Academic Levels Over Years',
-         legend = list(y = 0.5))
+          hoverinfo = "text", textposition = "none", height = 500) %>%
+    layout(yaxis = list(title = 'Number of Students'),
+           barmode = 'stack',
+           xaxis = list(title = 'Year'),
+           title = 'Students Distribution by Academic Levels Over Years',
+           legend = list(y = 0.5))
 }
+
 
 # Shiny UI
 # UI Setup
 ui <- dashboardPage(skin = "purple",
-  dashboardHeader(title = "International Students"),
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Filter Options", tabName = "filters", icon = icon("filter"), startExpanded = TRUE,
-               sliderInput("yearRange", "Year:", min = 1992, max = 2022, value = c(1992,2020), step = 1,sep = "")),
-      
-      menuItem("Source of Funds", tabName = "fundSource", icon = icon("money-check-dollar")),
-      menuItem("Countries of Origin", tabName = "studentOrigin", icon = icon("globe")),
-      menuItem("Field Of Study", tabName = "fieldOfStudy", icon = icon("chart-line")),
-      menuItem("Academic Levels", tabName = "studentsType", icon = icon("user-graduate"))
-    )
-  ),
-  dashboardBody(
-    tabItems(
-      tabItem(tabName = "filters", h3("Use the slider to select the year range for your analysis."), tags$hr()),
-      tabItem(tabName = "fundSource", fluidPage(
-        fluidRow(
-          column(
-            width = 12,
-            tags$div(
-              style = "text-align: center; font-size: 24px;font-style: italic;",
-              textOutput("fund")
-            )
-          )
-        ),
-              titlePanel("Source of Funds"),
-              mainPanel(width =12, height = 15,
-                         
-                        fluidRow(
-                          column(12, align="center",
-                                 plotlyOutput("pie")
-                                 ))))),
-      tabItem(tabName = "studentOrigin", fluidPage(fluidRow(
-        column(
-          width = 12,
-          tags$div(
-            style = "text-align: center; font-size: 24px;font-style: italic;",
-            textOutput("origin")
-          )
-        )
-      ),
-              titlePanel("Countries of Origin"),
-              leafletOutput("map"))),
-      
-      tabItem(tabName = "fieldOfStudy", fluidPage(
-        fluidRow(
-          column(
-            width = 12,
-            tags$div(
-              style = "text-align: center; font-size: 24px;font-style: italic;",
-              textOutput("field")
-            )
-          )
-        ),
-              titlePanel("Field Of Study"),
-        sidebarLayout(
-          sidebarPanel(
-            selectInput("yAxisType", "Select Y-Axis Data Type:", choices = c("Absolute Number" = "absolute", "Percentage" = "percentage")),
-            uiOutput("fieldCheckbox")
-          ),
-          mainPanel(plotlyOutput("interactivePlot"))
-        )
-      )),
-      
-      tabItem(tabName = "studentsType", fluidPage(
-        fluidRow(
-          column(
-            width = 12,
-            tags$div(
-              style = "text-align: center; font-size: 24px;font-style: italic;",
-              textOutput("type")
-            )
-          )
-        ),
-        titlePanel("Academic Levels"),
-        mainPanel(width=12, height = 15,
-                  fluidRow(
-          column(12, align="center",
-                 plotlyOutput("studentTypePlot")
-          )
-        ))
-      ))
-    )
-  )
+                    dashboardHeader(title = "International Students"),
+                    dashboardSidebar(
+                      sidebarMenu(
+                        menuItem("Filter Options", tabName = "filters", icon = icon("filter"), startExpanded = TRUE,
+                                 sliderInput("yearRange", "Year:", min = 1992, max = 2022, value = c(1992,2020), step = 1,sep = "")),
+                        
+                        menuItem("Source of Funds", tabName = "fundSource", icon = icon("money-check-dollar")),
+                        menuItem("Countries of Origin", tabName = "studentOrigin", icon = icon("globe")),
+                        menuItem("Field Of Study", tabName = "fieldOfStudy", icon = icon("chart-line")),
+                        menuItem("Academic Levels", tabName = "studentsType", icon = icon("user-graduate"))
+                      )
+                    ),
+                    dashboardBody(
+                      tabItems(
+                        tabItem(tabName = "filters", h3("Use the slider to select the year range for your analysis."), tags$hr()),
+                        tabItem(tabName = "fundSource", fluidPage(
+                          fluidRow(
+                            column(
+                              width = 12,
+                              tags$div(
+                                style = "text-align: center; font-size: 24px;font-style: italic;",
+                                textOutput("fund")
+                              )
+                            )
+                          ),
+                          titlePanel("Source of Funds"),
+                          mainPanel(width =12, height = 15,
+                                    
+                                    fluidRow(
+                                      column(12, align="center",
+                                             plotlyOutput("pie")
+                                      ))))),
+                        tabItem(tabName = "studentOrigin", fluidPage(fluidRow(
+                          column(
+                            width = 12,
+                            tags$div(
+                              style = "text-align: center; font-size: 24px;font-style: italic;",
+                              textOutput("origin")
+                            )
+                          )
+                        ),
+                        titlePanel("Countries of Origin"),
+                        leafletOutput("map"))),
+                        
+                        tabItem(tabName = "fieldOfStudy", fluidPage(
+                          fluidRow(
+                            column(
+                              width = 12,
+                              tags$div(
+                                style = "text-align: center; font-size: 24px;font-style: italic;",
+                                textOutput("field")
+                              )
+                            )
+                          ),
+                          titlePanel("Field Of Study"),
+                          sidebarLayout(
+                            sidebarPanel(
+                              selectInput("yAxisType", "Select Y-Axis Data Type:", choices = c("Absolute Number" = "absolute", "Percentage" = "percentage")),
+                              uiOutput("fieldCheckbox")
+                            ),
+                            mainPanel(plotlyOutput("interactivePlot"))
+                          )
+                        )),
+                        
+                        tabItem(tabName = "studentsType", fluidPage(
+                          fluidRow(
+                            column(
+                              width = 12,
+                              tags$div(
+                                style = "text-align: center; font-size: 24px;font-style: italic;",
+                                textOutput("type")
+                              )
+                            )
+                          ),
+                          titlePanel("Academic Levels"),
+                          mainPanel(width=12, height = 15,
+                                    fluidRow(
+                                      column(12, align="center",
+                                             plotlyOutput("studentTypePlot")
+                                      )
+                                    ))
+                        ))
+                      )
+                    )
 )
 
 
@@ -265,24 +266,23 @@ server <- function(input, output) {
   })
   
   # Text
-    output$fund <- renderText({
-      "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
+  output$fund <- renderText({
+    "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
   })
-    
-    output$origin <- renderText({
-      "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
-    })
-    
-    output$field <- renderText({
-      "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
-    })
-    
-    output$type <- renderText({
-      "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
-    })
+  
+  output$origin <- renderText({
+    "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
+  })
+  
+  output$field <- renderText({
+    "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
+  })
+  
+  output$type <- renderText({
+    "If you selected year(s) doesn't show a valid graph, meaning that not enough data were collected, please select other year(s). Thanks!"
+  })
   
 }
 
 # Activate shinyApp
 shinyApp(ui, server)
-
