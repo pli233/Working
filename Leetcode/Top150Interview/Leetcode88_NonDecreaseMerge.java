@@ -1,3 +1,6 @@
+package Top150Interview;
+
+//时间复杂度为 O(m + n)
 public class Leetcode88_NonDecreaseMerge {
     public static void main(String[] args) {
         int[] nums1 = { 1, 3, 4, 0, 0, 0 };
@@ -11,10 +14,9 @@ public class Leetcode88_NonDecreaseMerge {
         }
         System.out.println();
     }
-
 }
 
-class Solution {
+public class Solution {
     public void merge(int[] nums1, int m, int[] nums2, int n) {
         // Pointer for array1
         int i = m - 1;
